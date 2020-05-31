@@ -1,0 +1,14 @@
+{
+    "/example": {
+        "method" : ["GET"],
+        "response": {
+            "contentType": "application/json",
+            "statusCode": 200,
+            "body": {
+                "data": [
+                    "test"
+                ]
+            }
+        }
+    }
+}
