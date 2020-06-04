@@ -47,8 +47,11 @@ class FakeApi
      * @param string $directory
      * @param bool $firstCall
      */
-    public function loadRoutes($directory, $firstCall = true)
+    public function loadRoutes($directory = null, $firstCall = true)
     {
+        if ($directory === null) {
+            $directory = __APPDIR__ . '/endpoints';
+        }
         $files = scandir($directory);
         foreach ($files as $file) {
             if (!in_array($file, ['.', '..', '.gitignore'])) {
@@ -108,7 +111,7 @@ class FakeApi
     public function sendResponse()
     {
         if (array_key_exists($this->_requestPath, $this->_routes)) {
-            list($body, $responseCode, $headers) = $this->_getRouteResponse($this->_routes[$this->_requestPath]);
+            list($body, $responseCode, $headers) = $this->_getRouteResponse($this->_routes[$this->_requestPath], []);
         } else {
             foreach ($this->_routes as $path => $route) {
                 if (strpos($path, '*') !== false) {
@@ -140,24 +143,25 @@ class FakeApi
 
     /**
      * @param array $routeConfig
+     * @param array $arguments
      * @return array
      */
     protected function _getRouteResponse(array $routeConfig, array $arguments)
     {
-        if (in_array($this->_requestMethod, $routeConfig['method'])) {
-            switch ($routeConfig['response']['contentType']) {
+        if (in_array($this->_requestMethod, $routeConfig['request']['methods'])) {
+            $responseCode = $routeConfig['response']['statusCode'];
+            $headers = $routeConfig['response']['headers'];
+            switch ($routeConfig['response']['Content-Type']) {
                 case 'application/json':
                     $body = json_encode($routeConfig['response']['body']);
                     foreach ($arguments as $index => $argument) {
                         $body = str_replace('[[[$' . $index .  ']]]', $argument, $body);
                     }
-                    $responseCode = $routeConfig['response']['statusCode'];
-                    $headers = ['Content-Type' => 'application/json'];
+                    $headers['Content-Type'] = 'application/json';
                     break;
                 default:
                     $body = $routeConfig['response']['body'];
-                    $responseCode = $routeConfig['response']['statusCode'];
-                    $headers = ['Content-Type' => 'text/plain'];
+                    $headers['Content-Type'] = 'text/plain';
             }
         } else {
             $body = json_encode(['message' => 'Method Not Allowed', 'code' => 405]);

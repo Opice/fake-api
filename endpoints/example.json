@@ -1,9 +1,14 @@
 {
     "/example": {
-        "method" : ["GET"],
+        "request": {
+            "methods" : ["GET"]
+        },
         "response": {
-            "contentType": "application/json",
             "statusCode": 200,
+            "Content-Type": "application/json",
+            "headers": {
+                "X-header-name": "header value"
+            },
             "body": {
                 "data": [
                     "test"
