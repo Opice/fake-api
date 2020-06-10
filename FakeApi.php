@@ -9,7 +9,7 @@ class FakeApi
     protected $_routes = [];
 
     /** @var string */
-    protected $_requestPath;
+    protected $_requestUri;
 
     /** @var int */
     protected $_requestMethod;
@@ -20,16 +20,31 @@ class FakeApi
     /** @var bool */
     protected $_defaultResponse200 = false;
 
+    /** @var mixed */
+    protected $_requestBody;
+
+    /** @var string */
+    protected $_logsDirectorySlashSymbol = '⁄';
+
+    /** @var string */
+    protected $_logsDirectoryStarSymbol = '🞯';
+
     /**
      * FakeApi constructor.
-     * @param bool $returnEmpty200whenRouteNotFound
+     *
+     * @param array $options
+     * [
+     *     'DEFAULT_200_RESPONSE' => true|false,
+     *     'LOGS_SLASH' => '⁄',
+     *     'LOGS_STAR' => '🞯',
+     * ]
      */
-    public function __construct($returnEmpty200whenRouteNotFound = false)
+    public function __construct(array $options = array())
     {
-        $this->_defaultResponse200 = $returnEmpty200whenRouteNotFound;
+        $this->_loadOptions($options);
         $this->_requestMethod = $_SERVER['REQUEST_METHOD'];
         @list($uri, $queryString) = explode('?', $_SERVER['REQUEST_URI']);
-        $this->_requestPath = $uri;
+        $this->_requestUri = $uri;
         if ($queryString) {
             foreach (explode('&', $queryString) as $paramPair) {
                 $parts = explode('=', $paramPair);
@@ -41,6 +56,7 @@ class FakeApi
                 $this->_requestQueryParameters[$parameterName] = $parameterValue;
             }
         }
+        $this->_requestBody = file_get_contents('php://input');
     }
 
     /**
@@ -110,22 +126,22 @@ class FakeApi
      */
     public function sendResponse()
     {
-        if (array_key_exists($this->_requestPath, $this->_routes)) {
-            list($body, $responseCode, $headers) = $this->_getRouteResponse($this->_routes[$this->_requestPath], []);
+        if (array_key_exists($this->_requestUri, $this->_routes)) {
+            list($body, $responseCode, $headers) = $this->_getRouteResponse($this->_requestUri, $this->_routes[$this->_requestUri], []);
         } else {
             foreach ($this->_routes as $path => $route) {
                 if (strpos($path, '*') !== false) {
                     $pathRegex = str_replace('*', '[a-zA-Z0-9]+', str_replace('/', '\\/', $path));
-                    if (preg_match("/$pathRegex/", $this->_requestPath)) {
+                    if (preg_match("/$pathRegex/", $this->_requestUri)) {
                         $arguments = [0];
-                        $requestPathParts = explode('/', $this->_requestPath);
+                        $requestPathParts = explode('/', $this->_requestUri);
                         foreach (explode('/', $path) as $index => $pathPart) {
                             if ($pathPart == '*') {
                                 $arguments[] = $requestPathParts[$index];
                             }
                         }
                         unset($arguments[0]);
-                        list($body, $responseCode, $headers) = $this->_getRouteResponse($route, $arguments);
+                        list($body, $responseCode, $headers) = $this->_getRouteResponse($path, $route, $arguments);
                         break;
                     }
                 }
@@ -142,11 +158,31 @@ class FakeApi
     }
 
     /**
+     * @param array $options
+     */
+    protected function _loadOptions(array $options)
+    {
+        $definedOptions = [
+            'DEFAULT_200_RESPONSE' => '_defaultResponse200',
+            'LOGS_SLASH' => '_logsDirectorySlashSymbol',
+            'LOGS_STAR' => '_logsDirectoryStarSymbol'
+        ];
+        foreach ($definedOptions as $optionName => $property) {
+            if (array_key_exists($optionName, $options)) {
+                $this->$property = $options[$optionName];
+            } elseif ($envValue = getenv($optionName)) {
+                $this->$property = $envValue;
+            }
+        }
+    }
+
+    /**
+     * @param string $routePath
      * @param array $routeConfig
      * @param array $arguments
      * @return array
      */
-    protected function _getRouteResponse(array $routeConfig, array $arguments)
+    protected function _getRouteResponse(string $routePath, array $routeConfig, array $arguments)
     {
         if (in_array($this->_requestMethod, $routeConfig['request']['methods'])) {
             $responseCode = $routeConfig['response']['statusCode'];
@@ -168,7 +204,30 @@ class FakeApi
             $responseCode = 405;
             $headers = ['Content-Type' => 'application/json'];
         }
+        $this->_logRequest($routePath);
         return [$body, $responseCode, $headers];
+    }
+
+    /**
+     * @param string $routePath
+     */
+    protected function _logRequest(string $routePath)
+    {
+        $rawRequest = [$this->_requestMethod . ' ' . $_SERVER['REQUEST_URI'] . ' HTTP/1.1'];
+        foreach (getallheaders() as $name => $value) {
+            $rawRequest[] = "$name: $value";
+        }
+        if ($this->_requestBody) {
+            $rawRequest[] = '';
+            $rawRequest[] = $this->_requestBody;
+        }
+        $directoryName = str_replace('*', $this->_logsDirectoryStarSymbol, str_replace('/', $this->_logsDirectorySlashSymbol, $routePath));
+        $directory = __APPDIR__ . '/logs/' . $directoryName;
+        if (!is_dir($directory)) {
+            mkdir($directory);
+        }
+        $requestFileName = date('Y-m-d_H-i-s');
+        file_put_contents($directory . '/' . $requestFileName, implode("\r\n", $rawRequest));
     }
 
     /**

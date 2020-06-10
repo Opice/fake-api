@@ -1,5 +1,5 @@
 {
-    "/example": {
+    "/example/*": {
         "request": {
             "methods" : ["GET"]
         },
@@ -10,9 +10,9 @@
                 "X-header-name": "header value"
             },
             "body": {
-                "data": [
-                    "test"
-                ]
+                "data": {
+                    "wildcardValue": "[[[$1]]]"
+                }
             }
         }
     }

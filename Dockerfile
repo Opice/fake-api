@@ -1,10 +1,10 @@
 FROM php:7.4-apache
 
-MAINTAINER radek.labut@gmail.com
+COPY . /var/www/html/
+WORKSPACE /var/www/html/
 
 RUN a2enmod rewrite
-
-COPY . /var/www/html/
+RUN chmod 664 logs
 
 EXPOSE 80
 
