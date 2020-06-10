@@ -11,6 +11,9 @@ class FakeApi
     /** @var string */
     protected $_requestUri;
 
+    /** @var string */
+    protected $_rawRequestUri;
+
     /** @var int */
     protected $_requestMethod;
 
@@ -43,7 +46,8 @@ class FakeApi
     {
         $this->_loadOptions($options);
         $this->_requestMethod = $_SERVER['REQUEST_METHOD'];
-        @list($uri, $queryString) = explode('?', $_SERVER['REQUEST_URI']);
+        $this->_rawRequestUri = $_SERVER['REQUEST_URI'];
+        @list($uri, $queryString) = explode('?', $this->_rawRequestUri);
         $this->_requestUri = $uri;
         if ($queryString) {
             foreach (explode('&', $queryString) as $paramPair) {
@@ -149,6 +153,7 @@ class FakeApi
         }
         if (!isset($responseCode)) {
             list($body, $responseCode, $headers) = $this->_createNotFoundResponse();
+            $this->_logRequest('404');
         }
         http_response_code($responseCode);
         foreach ($headers as $name => $value) {
@@ -184,6 +189,9 @@ class FakeApi
      */
     protected function _getRouteResponse(string $routePath, array $routeConfig, array $arguments)
     {
+        if (!isset($routeConfig['request']['methods'])) {
+            $routeConfig['request']['methods'] = [$this->_requestMethod];
+        }
         if (in_array($this->_requestMethod, $routeConfig['request']['methods'])) {
             $responseCode = $routeConfig['response']['statusCode'];
             $headers = $routeConfig['response']['headers'];
@@ -204,15 +212,20 @@ class FakeApi
             $responseCode = 405;
             $headers = ['Content-Type' => 'application/json'];
         }
-        $this->_logRequest($routePath);
-        return [$body, $responseCode, $headers];
+        $responseData = [$body, $responseCode, $headers];
+        if (array_key_exists('log', $routeConfig) && $routeConfig['log'] == true) {
+            $this->_logRequest($routePath, $responseData);
+        }
+        return $responseData;
     }
 
     /**
      * @param string $routePath
+     * @param array $responseData
      */
-    protected function _logRequest(string $routePath)
+    protected function _logRequest(string $routePath, array $responseData = array())
     {
+        $logContent = '';
         $rawRequest = [$this->_requestMethod . ' ' . $_SERVER['REQUEST_URI'] . ' HTTP/1.1'];
         foreach (getallheaders() as $name => $value) {
             $rawRequest[] = "$name: $value";
@@ -221,13 +234,25 @@ class FakeApi
             $rawRequest[] = '';
             $rawRequest[] = $this->_requestBody;
         }
+        $logContent = implode("\r\n", $rawRequest);
+        if (!empty($responseData)) {
+            $separator = '================================================================================================================================';
+            $rawResponse = ['', $separator, $separator, '', 'HTTP/1.1 ' . $responseData[1]];
+            foreach ($responseData[2] as $headerName => $headerValue) {
+                $rawResponse[] = "$headerName: $headerValue";
+            }
+            $rawResponse[] = '';
+            $rawResponse[] = $responseData[0];
+            $logContent .= "\r\n" . implode("\r\n", $rawResponse);
+        }
+
         $directoryName = str_replace('*', $this->_logsDirectoryStarSymbol, str_replace('/', $this->_logsDirectorySlashSymbol, $routePath));
         $directory = __APPDIR__ . '/logs/' . $directoryName;
         if (!is_dir($directory)) {
             mkdir($directory);
         }
-        $requestFileName = date('Y-m-d_H-i-s');
-        file_put_contents($directory . '/' . $requestFileName, implode("\r\n", $rawRequest));
+        $fileName = date('Y-m-d_H-i-s');
+        file_put_contents($directory . '/' . $fileName, $logContent);
     }
 
     /**

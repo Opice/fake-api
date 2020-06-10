@@ -1,5 +1,6 @@
 {
     "/example/*": {
+        "log": true,
         "request": {
             "methods" : ["GET"]
         },

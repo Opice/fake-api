@@ -10,6 +10,7 @@ Just define the endpoint you need to call in a simple json config file
 ```json
 {
     "/example/*": {
+        "log": true,
         "request": {
             "methods" : ["GET"]
         },
@@ -42,15 +43,14 @@ Content-Type: application/json
 
 {"data":{"wildcardValue":"69"}}
 ```
-As shown in the example you can also define endpoints with wildcard and accss them dynamically in the response body.
-The request will also be logged in the `logs` directory
+As shown in the example you can also define endpoints with wildcard and access them dynamically in the response body.
+if you set `"logs": true` in the endpoint config, the request will also be logged in the `logs` directory
 ```bash
 ./logs
-├── ⁄example⁄🞯
-│   └── 2000-01-01_00-00-00
-└── .gitignore
+└── ⁄example⁄🞯
+    └── 2000-01-01_00-00-00
 ```
-in a folder named samed as the defined endpoint path, only with the symbols `/` and `*` replaced with `⁄` and `🞯`). You can change these symbols by passing `['LOGS_SLASH' => '_']` and `['LOGS_STAR' => 'W']` into the FakeApp constructor or setting environmental variables with the same names.
+in a folder named samed as the defined endpoint path, only with the symbols `/` and `*` replaced with `⁄` and `🞯`). You can change these symbols by passing `['LOGS_SLASH' => '_']` and `['LOGS_STAR' => '.']` into the FakeApi constructor or setting environmental variables with the same names.
 
 Example of a logged request:
 ```http request
@@ -66,6 +66,15 @@ Connection: keep-alive
 Content-Length: 9
 
 test body
+
+================================================================
+================================================================
+
+HTTP/1.1 200
+X-header-name: header value
+Content-Type: application/json
+
+{"data":{"wildcardValue":"69"}}
 ```
 For now the application only supports json requests and responses, I'll add more when I feel like it.
 Installation is pretty simple, example commands to start the application:
