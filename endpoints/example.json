@@ -1,18 +1,27 @@
 {
-    "/example/*": {
-        "log": true,
-        "request": {
+    "/example/*": { /* endpoint path */
+        "log": true, /* optional, defaults to false */
+        "request": { /* optional, defaults to all methods */
             "methods" : ["GET"]
         },
-        "response": {
-            "statusCode": 200,
-            "Content-Type": "application/json",
-            "headers": {
-                "X-header-name": "header value"
+        "responses": {
+            "200": { /* response designation */
+                "statusCode": 200,
+                "json": true, /* optional, defaults to true, adds Content-Type and Content-Length headers */
+                "headers": { /* optional */
+                    "X-header-name": "header value"
+                },
+                "body": { /* optional, defaults to '' */
+                    "data": {
+                        "wildcardValue": "[[[$1]]]" /* wildcard value designation */
+                    }
+                }
             },
-            "body": {
-                "data": {
-                    "wildcardValue": "[[[$1]]]"
+            "400": { /* different defined response */
+                "statusCode": 400,
+                "body": {
+                    "message": "Bad request",
+                    "status": 400
                 }
             }
         }
