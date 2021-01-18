@@ -33,10 +33,10 @@ class Router
                 if (is_dir($file)) {
                     $this->_loadRoutes($directory . "/$file", false);
                 } else {
-                    $fileContent = file_get_contents($directory . "/$file");
-                    $fileContent = preg_replace('/\/\*.+\*\/\s*\R/', \PHP_EOL, $fileContent); // removes comments /* comment */ from json
-                    $routes = json_decode($fileContent, true, 512, \JSON_THROW_ON_ERROR);
-                    foreach ($routes as $path => $route) {
+                    // removes comments /* comment */ from json
+                    $fileContent = preg_replace('/\/\*.+\*\/\s*\R/', \PHP_EOL, file_get_contents($directory . "/$file")); 
+                    $decoded = json_decode($fileContent, true, 512, \JSON_THROW_ON_ERROR);
+                    foreach ($decoded as $path => $route) {
                         $routes[$path] = $route;
                     }
                 }
