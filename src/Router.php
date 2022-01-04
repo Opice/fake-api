@@ -45,7 +45,9 @@ class Router
         if ($firstCall) {
             $rts = $sortedRoutes = [];
             foreach ($routes as $path => $routeData) {
-                if (strpos($path, '*') !== false) {
+                if (strpos($path, '*') === false) {
+                    $this->_routes[$path] = new Route($path, $routeData);
+                } else {
                     $firstOccurrence = null;
                     $routeSortingData = ['path' => $path, 'routeData' => $routeData, 'wildcardOccurrences' => []];
                     $pathParts = explode('/', $path);
